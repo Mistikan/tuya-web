@@ -12,6 +12,20 @@ Run `cargo build`
 
 Run `cargo run -- --help` for a list of options.
 
+An example for two different devices would be:
+
+```sh
+cargo run -- \
+    -d aaaaaa01234 -k 'SomeSecret' -d 10.0.5.50 \
+    -d bbbbbb56789 -k 'SecondCode' -d 10.0.5.51
+```
+
+You can then turn on the first output by sending: `curl -X PUT "http://localhost:3000/outlet/0/true"`.
+
+While turning off the second output with: `curl -X PUT "http://localhost:3000/outlet/1/false"`
+
+Toggling an outlet is done with: `curl -X POST "http://localhost:3000/outlet/0"`
+
 ## License
 
 tuya-web is licensed under GNU AGPL v3 or later, see the `LICENSE` file for the full license.
