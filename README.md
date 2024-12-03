@@ -15,9 +15,9 @@ Run `cargo run -- --help` for a list of options.
 An example for two different devices would be:
 
 ```sh
-cargo run -- \
-    -d aaaaaa01234 -k 'SomeSecret' -d 10.0.5.50 \
-    -d bbbbbb56789 -k 'SecondCode' -d 10.0.5.51
+RUST_LOG=warn cargo run -- \
+    -n livingroom-1 -d aaaaaa01234 -k 'SomeSecret' -a 10.0.5.50 -p 3.4 \
+    -n livingroom-2 -d bbbbbb56789 -k 'SecondCode' -a 10.0.5.51 -p 3.3
 ```
 
 You can then turn on the first output by sending: `curl -X PUT "http://localhost:3000/outlet/0/true"`.
@@ -25,6 +25,30 @@ You can then turn on the first output by sending: `curl -X PUT "http://localhost
 While turning off the second output with: `curl -X PUT "http://localhost:3000/outlet/1/false"`
 
 Toggling an outlet is done with: `curl -X POST "http://localhost:3000/outlet/0"`
+
+Get metrics: `curl http://localhost:3000/metrics`
+```
+# TYPE tuya_smartplug_scrapes_total counter
+tuya_smartplug_scrapes_total 1
+
+# TYPE tuya_smartplug_voltage gauge
+tuya_smartplug_voltage{device="livingroom-1"} 227.84
+
+# TYPE tuya_smartplug_power gauge
+tuya_smartplug_power{device="livingroom-1"} 1.13
+
+# TYPE tuya_smartplug_count_devices gauge
+tuya_smartplug_count_devices 1
+
+# TYPE tuya_smartplug_last_scrape_error gauge
+tuya_smartplug_last_scrape_error 0
+
+# TYPE tuya_smartplug_frequency gauge
+tuya_smartplug_frequency{device="livingroom-1"} 49.97
+
+# TYPE tuya_smartplug_current gauge
+tuya_smartplug_current{device="livingroom-1"} 0.146
+```
 
 ## License
 
@@ -47,3 +71,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ```
+
+## Links
+* [dulfer/localtuya-device-datapoints](https://github.com/dulfer/localtuya-device-datapoints)
+* [rkosegi/tuya-smartplug-exporter](https://github.com/rkosegi/tuya-smartplug-exporter)
