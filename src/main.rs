@@ -130,7 +130,6 @@ async fn get_metrics(
 fn setup_metrics_recorder() -> PrometheusHandle {
     // https://github.com/tokio-rs/axum/blob/main/examples/prometheus-metrics/src/main.rs
     // https://ellie.wtf/notes/exporting-prometheus-metrics-with-axum
-    // Ищи metrics::counter! и дергай эндпоинт, чтобы метрика появилась
     PrometheusBuilder::new()
         .install_recorder()
         .unwrap()
