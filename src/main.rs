@@ -5,12 +5,13 @@ use axum::{
     Router,
 };
 use clap::{CommandFactory, Parser};
-use log::warn;
+use log::{warn, error};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use outlet::Outlet;
-use std::iter::zip;
+use std::{fs::File, io::BufReader, iter::zip};
 use std::net::IpAddr;
 use std::sync::Arc;
+use std::process::exit;
 
 mod outlet;
 
@@ -37,38 +38,67 @@ struct Args {
     /// Version
     #[arg(short, long)]
     protocol_version: Vec<String>,
+
+    /// Config
+    #[arg(short, long)]
+    config: Option<String>,
 }
 
 #[derive(Clone)]
 struct AppState {
     outlets: Arc<Vec<Outlet>>,
-    recorder_handle: Arc<PrometheusHandle>
+    recorder_handle: Arc<PrometheusHandle>,
 }
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let args = Args::parse();
-    // Check that length of arrays are equal
-    if !(args.device_ids.len() == args.key.len() && args.key.len() == args.address.len()) {
-        Args::command()
-            .error(
-                clap::error::ErrorKind::ArgumentConflict,
-                "Must be same number of local keys, device ids, and addresses",
-            )
-            .exit();
-    }
+    let outlets: Vec<Outlet>;
 
-    let outlets: Vec<_> = zip(zip(zip(zip(args.device_ids, args.key), args.address), args.protocol_version), args.name)
-        .map(|((((dev_id, key), address), protocol_version), name)| Outlet {
-            name,
-            dev_id,
-            key,
-            address,
-            protocol_version
-        })
-        .collect();
+    let args = Args::parse();
+    match args.config {
+        Some(config) => {
+            let file = File::open(config).unwrap_or_else(|e| {
+                error!("{}", e);
+                exit(1);
+            });
+            let reader = BufReader::new(file);
+            outlets = serde_yml::from_reader(reader).unwrap_or_else(|e| {
+                error!("{}", e);
+                exit(1);
+            });
+        },
+        None => {
+            // Check that length of arrays are equal
+            if !(args.device_ids.len() == args.key.len() && args.key.len() == args.address.len()) {
+                Args::command()
+                    .error(
+                        clap::error::ErrorKind::ArgumentConflict,
+                        "Must be same number of local keys, device ids, and addresses",
+                    )
+                    .exit();
+            }
+
+            outlets = zip(
+                zip(
+                    zip(zip(args.device_ids, args.key), args.address),
+                    args.protocol_version,
+                ),
+                args.name,
+            )
+            .map(
+                |((((dev_id, key), address), protocol_version), name)| Outlet {
+                    name,
+                    dev_id,
+                    key,
+                    address,
+                    protocol_version,
+                },
+            )
+            .collect();
+        }
+    }
 
     let recorder_handle = setup_metrics_recorder();
 
@@ -90,11 +120,9 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn get_metrics(
-    State(app_state): State<AppState>
-) -> (StatusCode, String) {
+async fn get_metrics(State(app_state): State<AppState>) -> (StatusCode, String) {
     // Set flag tuya_smartplug_last_scrape_error
-    let mut tuya_smartplug_last_scrape_error = false; 
+    let mut tuya_smartplug_last_scrape_error = false;
 
     // Set metric tuya_smartplug_count_devices
     let tuya_smartplug_count_devices = app_state.outlets.len();
@@ -105,16 +133,19 @@ async fn get_metrics(
         let device = outlet.name.clone();
         match outlet.metrics().await {
             Ok(dps) => {
-                metrics::gauge!("tuya_smartplug_current", "device" => device.clone()).set(f64::from(dps.current)/1000.0);
-                metrics::gauge!("tuya_smartplug_power", "device" => device.clone()).set(f64::from(dps.power)/100.0);
-                metrics::gauge!("tuya_smartplug_voltage", "device" => device.clone()).set(f64::from(dps.voltage)/100.0);
-                metrics::gauge!("tuya_smartplug_frequency", "device" => device.clone()).set(f64::from(dps.frequency)/100.0);
-
-            },
+                metrics::gauge!("tuya_smartplug_current", "device" => device.clone())
+                    .set(f64::from(dps.current) / 1000.0);
+                metrics::gauge!("tuya_smartplug_power", "device" => device.clone())
+                    .set(f64::from(dps.power) / 100.0);
+                metrics::gauge!("tuya_smartplug_voltage", "device" => device.clone())
+                    .set(f64::from(dps.voltage) / 100.0);
+                metrics::gauge!("tuya_smartplug_frequency", "device" => device.clone())
+                    .set(f64::from(dps.frequency) / 100.0);
+            }
             Err(e) => {
                 tuya_smartplug_last_scrape_error = true;
                 warn!("{}", e);
-            },
+            }
         };
     }
 
@@ -130,9 +161,7 @@ async fn get_metrics(
 fn setup_metrics_recorder() -> PrometheusHandle {
     // https://github.com/tokio-rs/axum/blob/main/examples/prometheus-metrics/src/main.rs
     // https://ellie.wtf/notes/exporting-prometheus-metrics-with-axum
-    PrometheusBuilder::new()
-        .install_recorder()
-        .unwrap()
+    PrometheusBuilder::new().install_recorder().unwrap()
 }
 
 // basic handler that responds with a static string
