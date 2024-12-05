@@ -7,8 +7,10 @@ use rust_async_tuyapi::{
 use serde_json::json;
 use serde::{Deserialize, Serialize};
 
+#[derive(Deserialize)]
 pub struct Outlet {
     pub name: String,
+    #[serde(rename = "id")]
     pub dev_id: String,
     pub key: String,
     pub address: IpAddr,
