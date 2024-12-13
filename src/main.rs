@@ -12,6 +12,7 @@ use std::{fs::File, io::BufReader, iter::zip};
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::process::exit;
+use std::time::Instant;
 
 mod outlet;
 
@@ -131,6 +132,7 @@ async fn get_metrics(State(app_state): State<AppState>) -> (StatusCode, String) 
     // Set device metrics
     for outlet in app_state.outlets.iter() {
         let device = outlet.name.clone();
+        let start = Instant::now();
         match outlet.metrics().await {
             Ok(dps) => {
                 metrics::gauge!("tuya_smartplug_current", "device" => device.clone())
@@ -147,6 +149,9 @@ async fn get_metrics(State(app_state): State<AppState>) -> (StatusCode, String) 
                 warn!("{}", e);
             }
         };
+        let duration = start.elapsed();
+        metrics::gauge!("tuya_smartplug_duration_seconds", "device" => device.clone())
+            .set(duration);
     }
 
     // Set global metrics
