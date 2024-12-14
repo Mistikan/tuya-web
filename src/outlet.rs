@@ -24,7 +24,7 @@ pub struct Dps {
     pub enable: Option<bool>,
     #[serde(alias = "17")]
     // TODO
-    pub xxx_todo: u16,
+    pub xxx_todo: Option<u16>,
     #[serde(alias = "18")]
     pub current: u16,
     #[serde(alias = "19")]
