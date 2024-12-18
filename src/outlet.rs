@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::IpAddr, time::SystemTime};
+use std::{collections::HashMap, net::ToSocketAddrs, time::SystemTime};
 
 use log::{debug, info};
 use rust_async_tuyapi::{
@@ -13,7 +13,7 @@ pub struct Outlet {
     #[serde(rename = "id")]
     pub dev_id: String,
     pub key: String,
-    pub address: IpAddr,
+    pub address: String,
     pub protocol_version: String
 }
 
@@ -184,6 +184,10 @@ impl Outlet {
     }
 
     fn device(&self) -> Result<TuyaDevice, ErrorKind> {
-        TuyaDevice::new(&self.protocol_version, &self.dev_id, Some(&self.key), self.address)
+        let tsa = self.address.clone() + ":443";
+        let mut addrs_iter = tsa.to_socket_addrs()?;
+        let addr = addrs_iter.next().unwrap().ip();
+        debug!("Name: {}, IP: {}", self.name, addr);
+        TuyaDevice::new(&self.protocol_version, &self.dev_id, Some(&self.key), addr)
     }
 }

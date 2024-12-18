@@ -9,7 +9,6 @@ use log::{warn, error};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use outlet::Outlet;
 use std::{fs::File, io::BufReader, iter::zip};
-use std::net::IpAddr;
 use std::sync::Arc;
 use std::process::exit;
 use std::time::Instant;
@@ -32,9 +31,9 @@ struct Args {
     #[arg(short, long)]
     key: Vec<String>,
 
-    /// IP address
+    /// IP address or DNS name
     #[arg(short, long)]
-    address: Vec<IpAddr>,
+    address: Vec<String>,
 
     /// Version
     #[arg(short, long)]
